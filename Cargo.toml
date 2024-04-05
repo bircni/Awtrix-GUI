@@ -1,0 +1,43 @@
+[package]
+name = "awtrix-gui"
+version = "0.1.0"
+edition = "2021"
+description = "A GUI for the awtrix clock."
+
+[package.metadata.bundle]
+name = "AwtrixGUI"
+identifier = "bircni.AwtrixGUI"
+icon = [
+    "./../res/mac-icons/icon_16x16.png",
+    "./../res/mac-icons/icon_32x32.png",
+    "./../res/mac-icons/icon_128x128.png",
+    "./../res/mac-icons/icon_256x256.png",
+    "./../res/mac-icons/icon_16x16@2x.png",
+    "./../res/mac-icons/icon_32x32@2x.png",
+    "./../res/mac-icons/icon_128x128@2x.png",
+]
+version = "0.1.0"
+resources = ["./../res/mac-icons/icon*.png"]
+copyright = "© 2024 bircni"
+short_description = "A GUI for the awtrix clock."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Error handling
+anyhow = "1.0.81"
+# Networking
+reqwest = { version = "0.12.2", features = ["blocking"] }
+# Parsing
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.115"
+semver = "1.0.22"
+# GUI
+eframe = { version = "0.27.2", features = ["wgpu"] }
+egui = "0.27.2"
+egui-notify = "0.14.0"
+egui_extras = { version = "0.27.2", features = ["syntect", "image"] }
+image = "0.25.1"
+open = "5.1.2"
+ping = "0.5.2"
+struct_iterable = "0.1.1"
