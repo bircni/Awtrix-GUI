@@ -1,6 +1,6 @@
 use anyhow::Context;
 use core::str;
-use ping::ping;
+use ping::dgramsock::ping;
 use serde::{Deserialize, Serialize};
 use std::{
     env, fs,
