@@ -1,8 +1,8 @@
 use egui::Color32;
 use serde::{Deserialize, Serialize, Serializer};
-use struct_iterable::Iterable;
+//use struct_iterable::Iterable;
 
-#[derive(Serialize, Deserialize, Debug, Iterable)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CustomApp {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub text: String,
