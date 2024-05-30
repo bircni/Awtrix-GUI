@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::config::Config;
 use egui::{
     include_image, special_emojis::GITHUB, vec2, Align, Align2, Button, Frame, Image, Layout,
@@ -24,28 +22,21 @@ impl StatusBar {
 
     pub fn show(&mut self, ui: &mut Ui, tab: &mut Tab, config: &mut Config) {
         ui.horizontal(|ui| {
-            if config.last_state {
+            ui.add_enabled_ui(!config.ip.is_empty(), |ui| {
                 ui.selectable_value(tab, Tab::Screen, "Screen");
                 ui.selectable_value(tab, Tab::Status, "Status");
                 ui.selectable_value(tab, Tab::Settings, "Settings");
-                ui.selectable_value(tab, Tab::Custom, "Custom");
-            }
+            });
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add(Button::new(" ? ").rounding(40.0))
                     .clicked()
                     .then(|| self.show_about = true);
-                ui.add(Button::new("Set")).clicked().then(|| {
-                    if config.set_ip().is_err() {
-                        self.toasts
-                            .error("Failed to set IP")
-                            .set_duration(Some(Duration::from_secs(5)));
-                    } else {
-                        config.check_status(true);
-                    }
+                ui.add(Button::new("Save")).clicked().then(|| {
+                    config.write().unwrap();
                 });
                 ui.add(
-                    TextEdit::singleline(&mut config.ip_str)
+                    TextEdit::singleline(&mut config.ip)
                         .hint_text("IP")
                         .desired_width(150.0),
                 );

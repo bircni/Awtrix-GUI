@@ -1,4 +1,4 @@
-use std::{net::IpAddr, time::Duration};
+use std::time::Duration;
 
 use anyhow::Context;
 use egui::{Button, DragValue, Label, ScrollArea, SidePanel, Ui};
@@ -6,8 +6,6 @@ use egui_notify::Toasts;
 use reqwest::blocking::Client;
 use semver::Version;
 use serde_json::{from_str, Value};
-
-use crate::config;
 
 use super::status::{self, Stat};
 
@@ -29,7 +27,7 @@ impl Device {
     pub fn show(
         &mut self,
         ui: &mut Ui,
-        ip: Option<IpAddr>,
+        ip: &str,
         stats: &Option<Stat>,
         write_boot: &mut (bool, bool),
     ) {
@@ -41,25 +39,26 @@ impl Device {
                         ui.heading("Awtrix Options");
                     });
                     ui.separator();
-                    if let Some(ip) = ip {
+                    if ip.is_empty() {
+                        ui.label("No IP set");
+                    } else {
                         ui.vertical_centered(|ui| {
                             ui.horizontal(|ui| {
-                                self.power(ui, ip);
+                                // TODO: FIX THIS
+                                //self.power(ui, ip);
                                 self.reboot(ui, ip, write_boot);
                                 ui.separator();
                                 self.sleep(ui, ip);
                             });
                         });
                         self.update_device(ui, ip, stats);
-                    } else {
-                        ui.label("No IP set");
                     }
                 });
             });
         self.toasts.show(ui.ctx());
     }
 
-    fn power(&mut self, ui: &mut Ui, ip: IpAddr) {
+    fn power(&mut self, ui: &mut Ui, ip: &str) {
         fn handle_power_result(result: &anyhow::Result<()>, toasts: &mut Toasts, power: &str) {
             match result {
                 Ok(()) => toasts
@@ -81,8 +80,7 @@ impl Device {
         });
     }
 
-    fn set_power(ip: IpAddr, curr_power: bool) -> anyhow::Result<()> {
-        config::check_ip(ip)?;
+    fn set_power(ip: &str, curr_power: bool) -> anyhow::Result<()> {
         let payload = format!("{{\"power\": {curr_power}}}");
         Client::new()
             .post(format!("http://{ip}/api/power"))
@@ -95,7 +93,7 @@ impl Device {
             .context("Failed to set power")
     }
 
-    fn sleep(&mut self, ui: &mut Ui, ip: IpAddr) {
+    fn sleep(&mut self, ui: &mut Ui, ip: &str) {
         ui.horizontal(|ui| {
             ui.add(
                 DragValue::new(&mut self.time)
@@ -118,8 +116,7 @@ impl Device {
         });
     }
 
-    fn set_sleep(&self, ip: IpAddr) -> anyhow::Result<()> {
-        config::check_ip(ip)?;
+    fn set_sleep(&self, ip: &str) -> anyhow::Result<()> {
         let payload = format!("{{\"sleep\": {}}}", self.time);
         Client::new()
             .post(format!("http://{ip}/api/sleep"))
@@ -131,7 +128,7 @@ impl Device {
             .context("Failed to set sleep")
     }
 
-    fn reboot(&mut self, ui: &mut Ui, ip: IpAddr, write_boot: &mut (bool, bool)) {
+    fn reboot(&mut self, ui: &mut Ui, ip: &str, write_boot: &mut (bool, bool)) {
         ui.button("Reboot")
             .clicked()
             .then(|| match Self::set_reboot(ip) {
@@ -149,8 +146,7 @@ impl Device {
             });
     }
 
-    fn set_reboot(ip: IpAddr) -> anyhow::Result<()> {
-        config::check_ip(ip)?;
+    fn set_reboot(ip: &str) -> anyhow::Result<()> {
         Client::new()
             .post(format!("http://{ip}/api/reboot"))
             .body("-")
@@ -161,7 +157,7 @@ impl Device {
             .context("Failed to reboot")
     }
 
-    fn update_device(&mut self, ui: &mut Ui, ip: IpAddr, stats: &Option<Stat>) {
+    fn update_device(&mut self, ui: &mut Ui, ip: &str, stats: &Option<Stat>) {
         ui.horizontal(|ui| {
             ui.add(Button::new("Update"))
                 .clicked()
@@ -198,8 +194,8 @@ impl Device {
         }
     }
 
-    fn check_update(&mut self, ip: IpAddr) -> anyhow::Result<()> {
-        let stats = status::Status::get_stats(ip).context("Failed to get stats")?;
+    fn check_update(&mut self, ip: &str) -> anyhow::Result<()> {
+        let stats = status::get_stats(ip).context("Failed to get stats")?;
         let current = Device::parse_to_version(&stats.version);
         let latest = Device::parse_to_version(&Device::get_latest_tag().unwrap_or_default());
         if current < latest {
@@ -245,8 +241,7 @@ impl Device {
         }
     }
 
-    fn set_update(ip: IpAddr) -> anyhow::Result<()> {
-        config::check_ip(ip)?;
+    fn set_update(ip: &str) -> anyhow::Result<()> {
         Client::new()
             .post(format!("http://{ip}/api/doupdate"))
             .body(String::new())

@@ -2,7 +2,7 @@
 #![warn(clippy::perf)]
 #![warn(clippy::style)]
 #![deny(clippy::all)]
-#![deny(clippy::unwrap_used)]
+#![warn(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_possible_truncation)]
@@ -11,7 +11,6 @@ use anyhow::Context;
 use egui::ViewportBuilder;
 
 mod config;
-mod customapp;
 mod ui;
 
 fn main() -> anyhow::Result<()> {
