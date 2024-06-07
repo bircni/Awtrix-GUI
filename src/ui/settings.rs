@@ -6,7 +6,6 @@ use reqwest::blocking::{get, Client};
 pub struct Settings {
     language: String,
     code: String,
-    pub write_boot: (bool, bool),
 }
 
 impl Settings {
@@ -14,7 +13,6 @@ impl Settings {
         Self {
             language: "json".to_string(),
             code: String::new(),
-            write_boot: (false, false),
         }
     }
 
@@ -36,15 +34,9 @@ impl Settings {
             }
             if ui.add(Button::new("Write Settings")).clicked() {
                 match self.set_settings(ip) {
-                    Ok(()) => {
-                        self.write_boot = (true, false);
-                        return Ok(());
-                    }
+                    Ok(()) => return Ok(()),
                     Err(e) => anyhow::bail!(e),
                 }
-            }
-            if self.write_boot.0 && !self.write_boot.1 {
-                ui.label("Reboot required!");
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.spacing();

@@ -84,12 +84,11 @@ impl eframe::App for App {
                 ui.separator();
             });
 
-            self.device.show(
-                ui,
-                &self.config.ip,
-                &self.stat,
-                &mut self.settings.write_boot,
-            );
+            self.device
+                .show(ui, &self.config.ip, &self.stat)
+                .unwrap_or_else(|e| {
+                    self.toasts.error(e.to_string());
+                });
             if !self.config.ip.is_empty() {
                 let ip = &self.config.ip;
                 match self.current_tab {
