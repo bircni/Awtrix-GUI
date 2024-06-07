@@ -1,9 +1,6 @@
-use std::time::Duration;
-
 use anyhow::Context;
 use egui::{Align, Button, Layout, ScrollArea, TextEdit, TextStyle, Ui};
 use egui_extras::syntax_highlighting;
-use egui_notify::Toasts;
 use reqwest::blocking::{get, Client};
 
 pub struct Settings {

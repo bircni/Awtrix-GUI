@@ -3,48 +3,51 @@ use egui::{
     include_image, special_emojis::GITHUB, vec2, Align, Align2, Button, Frame, Image, Layout,
     TextEdit, Ui, Window,
 };
-use egui_notify::Toasts;
 
 use super::Tab;
 
 pub struct StatusBar {
     show_about: bool,
-    toasts: Toasts,
 }
 
 impl StatusBar {
     pub fn new() -> Self {
-        Self {
-            show_about: false,
-            toasts: Toasts::new().with_anchor(egui_notify::Anchor::BottomLeft),
-        }
+        Self { show_about: false }
     }
 
-    pub fn show(&mut self, ui: &mut Ui, tab: &mut Tab, config: &mut Config) {
-        ui.horizontal(|ui| {
-            ui.add_enabled_ui(!config.ip.is_empty(), |ui| {
-                ui.selectable_value(tab, Tab::Screen, "Screen");
-                ui.selectable_value(tab, Tab::Status, "Status");
-                ui.selectable_value(tab, Tab::Settings, "Settings");
-            });
-
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                ui.add(Button::new(" ? ").rounding(40.0))
-                    .clicked()
-                    .then(|| self.show_about = true);
-                ui.add(Button::new("Save")).clicked().then(|| {
-                    config.write().unwrap();
-                });
-                ui.add(
-                    TextEdit::singleline(&mut config.ip)
-                        .hint_text("IP")
-                        .desired_width(150.0),
-                );
-                ui.label("IP:");
-            });
-        });
+    pub fn show(&mut self, ui: &mut Ui, tab: &mut Tab, config: &mut Config) -> anyhow::Result<()> {
         self.about_window(ui);
-        self.toasts.show(ui.ctx());
+        return ui
+            .horizontal(|ui| {
+                ui.add_enabled_ui(!config.ip.is_empty(), |ui| {
+                    ui.selectable_value(tab, Tab::Screen, "Screen");
+                    ui.selectable_value(tab, Tab::Status, "Status");
+                    ui.selectable_value(tab, Tab::Settings, "Settings");
+                });
+
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.add(Button::new(" ? ").rounding(40.0))
+                        .clicked()
+                        .then(|| self.show_about = true);
+                    let ret = ui
+                        .add(Button::new("Save"))
+                        .clicked()
+                        .then(|| match config.write() {
+                            Ok(()) => anyhow::Ok(()),
+                            Err(e) => anyhow::bail!(e),
+                        })
+                        .unwrap_or(Ok(()));
+                    ui.add(
+                        TextEdit::singleline(&mut config.ip)
+                            .hint_text("IP")
+                            .desired_width(150.0),
+                    );
+                    ui.label("IP:");
+                    ret
+                })
+                .inner
+            })
+            .inner;
     }
 
     fn about_window(&mut self, ui: &mut Ui) {

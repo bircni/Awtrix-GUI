@@ -1,12 +1,10 @@
 use eframe::CreationContext;
 use egui::{
-    vec2, CentralPanel, Color32, ColorImage, Context, ImageData, ScrollArea, TextStyle,
-    TextureOptions,
+    vec2, CentralPanel, Color32, ColorImage, Context, ImageData, TextStyle, TextureOptions,
 };
 use egui_notify::Toasts;
 use parking_lot::RwLock;
 use status::Stat;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use crate::config::Config;
@@ -75,8 +73,13 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         CentralPanel::default().show(ctx, |ui| {
-            self.statusbar
-                .show(ui, &mut self.current_tab, &mut self.config);
+            match self
+                .statusbar
+                .show(ui, &mut self.current_tab, &mut self.config)
+            {
+                Ok(()) => self.toasts.success("Config saved!"),
+                Err(e) => self.toasts.error(e.to_string()),
+            };
             ui.vertical_centered(|ui| {
                 ui.separator();
             });
@@ -95,9 +98,7 @@ impl eframe::App for App {
                     Tab::Settings => self.settings.show(ui, ip),
                 }
                 .unwrap_or_else(|e| {
-                    self.toasts
-                        .error(e.to_string())
-                        .set_duration(Some(std::time::Duration::from_secs(5)));
+                    self.toasts.error(e.to_string());
                 });
             }
         });

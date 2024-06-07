@@ -58,6 +58,7 @@ impl Device {
         self.toasts.show(ui.ctx());
     }
 
+    /*
     fn power(&mut self, ui: &mut Ui, ip: &str) {
         fn handle_power_result(result: &anyhow::Result<()>, toasts: &mut Toasts, power: &str) {
             match result {
@@ -92,6 +93,7 @@ impl Device {
             .then_some(())
             .context("Failed to set power")
     }
+    */
 
     fn sleep(&mut self, ui: &mut Ui, ip: &str) {
         ui.horizontal(|ui| {
