@@ -3,7 +3,6 @@ use std::sync::{mpsc, Arc};
 use anyhow::Context;
 use egui::{ColorImage, TextureHandle, TextureOptions, Ui};
 use parking_lot::RwLock;
-use reqwest::blocking;
 
 const SIZE: [usize; 2] = [320, 80];
 
@@ -41,7 +40,12 @@ fn threaded_screen(ip: String, texture: Arc<RwLock<TextureHandle>>) -> anyhow::R
 }
 
 fn get_screen(ip: &str) -> anyhow::Result<ColorImage> {
-    let response = match blocking::get(format!("http://{ip}/api/screen")) {
+    let client = reqwest::blocking::Client::new();
+    let response = match client
+        .get(format!("http://{ip}/api/screen"))
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+    {
         Ok(response) if response.status().is_success() => response,
         _ => anyhow::bail!("Failed to get screen"),
     };

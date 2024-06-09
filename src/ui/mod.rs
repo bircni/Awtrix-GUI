@@ -1,3 +1,4 @@
+use anyhow::Ok;
 use eframe::CreationContext;
 use egui::{
     vec2, CentralPanel, Color32, ColorImage, Context, ImageData, TextStyle, TextureOptions,
@@ -20,7 +21,7 @@ mod status;
 mod statusbar;
 
 pub struct App {
-    current_tab: Tab,
+    current_tab: Arc<RwLock<Tab>>,
     config: Config,
     toasts: Toasts,
     device: Device,
@@ -35,6 +36,16 @@ enum Tab {
     Screen,
     Status,
     Settings,
+}
+
+impl Tab {
+    fn as_str(&self) -> &str {
+        match self {
+            Tab::Screen => "Screen",
+            Tab::Status => "Status",
+            Tab::Settings => "Settings",
+        }
+    }
 }
 
 impl App {
@@ -56,8 +67,9 @@ impl App {
             TextureOptions::default(),
         );
         let screen_texture = Arc::new(RwLock::new(screen_texture));
+        let current_tab = Arc::new(RwLock::new(Tab::Status));
         Self {
-            current_tab: Tab::Screen,
+            current_tab,
             config: Config::new(),
             toasts: Toasts::new().with_anchor(egui_notify::Anchor::BottomLeft),
             device: Device::new(),
@@ -72,14 +84,14 @@ impl App {
 /// Main application loop (called every frame)
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        let mut current_tab = self.current_tab.write();
         CentralPanel::default().show(ctx, |ui| {
-            match self
-                .statusbar
-                .show(ui, &mut self.current_tab, &mut self.config)
-            {
-                Ok(()) => self.toasts.success("Config saved!"),
-                Err(e) => self.toasts.error(e.to_string()),
-            };
+            self.statusbar
+                .show(ui, &mut current_tab, &mut self.config)
+                .unwrap_or_else(|e| {
+                    self.toasts.error(e.to_string());
+                });
+
             ui.vertical_centered(|ui| {
                 ui.separator();
             });
@@ -91,10 +103,11 @@ impl eframe::App for App {
                 });
             if !self.config.ip.is_empty() {
                 let ip = &self.config.ip;
-                match self.current_tab {
-                    Tab::Status => status::show(ui, ip, &mut self.stat),
-                    Tab::Screen => screen::show(ui, ip, self.screen_texture.clone()),
-                    Tab::Settings => self.settings.show(ui, ip),
+                match current_tab.as_str() {
+                    "Status" => status::show(ui, ip, &mut self.stat),
+                    "Screen" => screen::show(ui, ip, self.screen_texture.clone()),
+                    "Settings" => self.settings.show(ui, ip),
+                    _ => Ok(()),
                 }
                 .unwrap_or_else(|e| {
                     self.toasts.error(e.to_string());
