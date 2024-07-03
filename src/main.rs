@@ -27,12 +27,11 @@ fn main() -> anyhow::Result<()> {
         "Awtrix",
         eframe::NativeOptions {
             viewport,
-            depth_buffer: 32,
             follow_system_theme: true,
             centered: true,
             ..Default::default()
         },
-        Box::new(|cc| Box::new(ui::App::new(cc))),
+        Box::new(|cc| Ok(Box::new(ui::App::new(cc)))),
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))
     .context("Failed to run native")

@@ -36,14 +36,14 @@ impl Device {
                             ui.vertical_centered(|ui| {
                                 ui.horizontal(|ui| {
                                     // TODO: FIX THIS
-                                    //self.power(ui, ip);
+                                    Self::power(ui, ip);
                                     // TODO: FIX THIS
-                                    let _ = Self::reboot(ui, ip);
+                                    Self::reboot(ui, ip);
                                     ui.separator();
                                     self.sleep(ui, ip)
                                 });
                             });
-                            self.update_device(ui, ip, stats)
+                            self.update_device(ui, ip, stats, self.update_available)
                         }
                     })
                     .inner
@@ -52,26 +52,12 @@ impl Device {
         //Ok(())
     }
 
-    /*
-    fn power(&mut self, ui: &mut Ui, ip: &str) {
-        fn handle_power_result(result: &anyhow::Result<()>, toasts: &mut Toasts, power: &str) {
-            match result {
-                Ok(()) => toasts
-                    .info(format!("Power {power}"))
-                    .set_duration(Some(Duration::from_secs(5))),
-                Err(_) => toasts
-                    .error("Failed to set power")
-                    .set_duration(Some(Duration::from_secs(5))),
-            };
-        }
-
+    fn power(ui: &mut Ui, ip: &str) {
         ui.horizontal(|ui| {
-            ui.button("On").clicked().then(|| {
-                handle_power_result(&Self::set_power(ip, true), &mut self.toasts, "On");
-            });
-            ui.button("Off").clicked().then(|| {
-                handle_power_result(&Self::set_power(ip, true), &mut self.toasts, "Off");
-            });
+            ui.button("On").clicked().then(|| Self::set_power(ip, true));
+            ui.button("Off")
+                .clicked()
+                .then(|| Self::set_power(ip, false));
         });
     }
 
@@ -87,14 +73,13 @@ impl Device {
             .then_some(())
             .context("Failed to set power")
     }
-    */
 
     fn sleep(&mut self, ui: &mut Ui, ip: &str) -> anyhow::Result<()> {
         ui.horizontal(|ui| {
             ui.add(
                 DragValue::new(&mut self.time)
                     .speed(1.0)
-                    .clamp_range(0..=3600)
+                    .range(0..=3600)
                     .suffix("s"),
             );
             ui.button("Sleep").clicked().then(|| self.set_sleep(ip))
@@ -115,11 +100,8 @@ impl Device {
             .context("Failed to set sleep")
     }
 
-    fn reboot(ui: &mut Ui, ip: &str) -> anyhow::Result<()> {
-        ui.button("Reboot")
-            .clicked()
-            .then(|| Self::set_reboot(ip))
-            .unwrap_or(Ok(()))
+    fn reboot(ui: &mut Ui, ip: &str) {
+        ui.button("Reboot").clicked().then(|| Self::set_reboot(ip));
     }
 
     fn set_reboot(ip: &str) -> anyhow::Result<()> {
@@ -133,11 +115,17 @@ impl Device {
             .context("Failed to reboot")
     }
 
-    fn update_device(&mut self, ui: &mut Ui, ip: &str, stats: &Option<Stat>) -> anyhow::Result<()> {
+    fn update_device(
+        &mut self,
+        ui: &mut Ui,
+        ip: &str,
+        stats: &Option<Stat>,
+        enabled: bool,
+    ) -> anyhow::Result<()> {
         let mut ret = ui
             .horizontal(|ui| {
                 let ret = ui
-                    .add(Button::new("Update"))
+                    .add_enabled(enabled, Button::new("Update"))
                     .clicked()
                     .then(|| self.check_update(ip));
                 if let Some(stats) = stats {
