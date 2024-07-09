@@ -29,14 +29,14 @@ anyhow = "1.0.86"
 # Networking
 reqwest = { version = "0.12.5", features = ["blocking"] }
 # Parsing
-serde = { version = "1.0.203", features = ["derive"] }
+serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.120"
 semver = "1.0.23"
 # GUI
-eframe = "0.28.0"
-egui = "0.28.0"
-egui-notify = { git = "https://github.com/bircni/egui-notify", branch = "main" }
-egui_extras = { version = "0.28.0", features = ["syntect", "image"] }
+eframe = "0.28.1"
+egui = "0.28.1"
+egui-notify = "0.15.0"
+egui_extras = { version = "0.28.1", features = ["syntect", "image"] }
 image = "0.25.1"
-open = "5.2.0"
+open = "5.3.0"
 parking_lot = "0.12.3"
