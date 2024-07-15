@@ -35,7 +35,7 @@ semver = "1.0.22"
 # GUI
 eframe = { version = "0.27.2", features = ["wgpu"] }
 egui = "0.27.2"
-egui-notify = "0.14.0"
+egui-notify = "0.15.0"
 egui_extras = { version = "0.27.2", features = ["syntect", "image"] }
 image = "0.25.1"
 open = "5.1.2"
