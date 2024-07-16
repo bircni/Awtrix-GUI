@@ -1,20 +1,19 @@
+use anyhow::Ok;
 use eframe::CreationContext;
 use egui::{
     vec2, CentralPanel, Color32, ColorImage, Context, ImageData, TextStyle, TextureOptions,
 };
 use egui_notify::Toasts;
+use parking_lot::RwLock;
+use status::Stat;
 use std::sync::Arc;
 
 use crate::config::Config;
 
-use self::custom::Custom;
 use self::device::Device;
-use self::screen::Screen;
 use self::settings::Settings;
-use self::status::Status;
 use self::statusbar::StatusBar;
 
-mod custom;
 mod device;
 mod screen;
 mod settings;
@@ -22,15 +21,14 @@ mod status;
 mod statusbar;
 
 pub struct App {
-    current_tab: Tab,
+    current_tab: Arc<RwLock<Tab>>,
     config: Config,
     toasts: Toasts,
-    stats: Status,
     device: Device,
-    screen: Screen,
     settings: Settings,
     statusbar: StatusBar,
-    custom: Custom,
+    pub stat: Option<Stat>,
+    screen_texture: Arc<RwLock<egui::TextureHandle>>,
 }
 
 #[derive(PartialEq)]
@@ -38,7 +36,16 @@ enum Tab {
     Screen,
     Status,
     Settings,
-    Custom,
+}
+
+impl Tab {
+    fn as_str(&self) -> &str {
+        match self {
+            Tab::Screen => "Screen",
+            Tab::Status => "Status",
+            Tab::Settings => "Settings",
+        }
+    }
 }
 
 impl App {
@@ -56,52 +63,54 @@ impl App {
 
         let screen_texture = cc.egui_ctx.load_texture(
             "screen",
-            ImageData::Color(Arc::new(ColorImage::new([1, 10], Color32::TRANSPARENT))),
+            ImageData::Color(Arc::new(ColorImage::new([320, 80], Color32::TRANSPARENT))),
             TextureOptions::default(),
         );
+        let screen_texture = Arc::new(RwLock::new(screen_texture));
+        let current_tab = Arc::new(RwLock::new(Tab::Status));
         Self {
-            current_tab: Tab::Screen,
+            current_tab,
             config: Config::new(),
             toasts: Toasts::new().with_anchor(egui_notify::Anchor::BottomLeft),
-            stats: Status::new(),
             device: Device::new(),
-            screen: Screen::new(screen_texture),
+            screen_texture,
             settings: Settings::new(),
             statusbar: StatusBar::new(),
-            custom: Custom::new(),
+            stat: None,
         }
     }
 }
+
 /// Main application loop (called every frame)
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
-        self.config.check_status(false);
+        let mut current_tab = self.current_tab.write();
         CentralPanel::default().show(ctx, |ui| {
             self.statusbar
-                .show(ui, &mut self.current_tab, &mut self.config);
+                .show(ui, &mut current_tab, &mut self.config)
+                .unwrap_or_else(|e| {
+                    self.toasts.error(e.to_string());
+                });
+
             ui.vertical_centered(|ui| {
                 ui.separator();
             });
 
-            self.device.show(
-                ui,
-                self.config.ip,
-                &self.stats.stat,
-                &mut self.settings.write_boot,
-            );
-            if self.config.last_state {
-                if let Some(ip) = self.config.ip {
-                    match self.current_tab {
-                        Tab::Status => self.stats.show(ui, ip),
-                        Tab::Screen => self.screen.show(ui, ip),
-                        Tab::Settings => self.settings.show(ui, ip),
-                        Tab::Custom => self.custom.show(ui),
-                    }
+            self.device
+                .show(ui, &self.config.ip, &self.stat)
+                .unwrap_or_else(|e| {
+                    self.toasts.error(e.to_string());
+                });
+            if !self.config.ip.is_empty() {
+                let ip = &self.config.ip;
+                match current_tab.as_str() {
+                    "Status" => status::show(ui, ip, &mut self.stat),
+                    "Screen" => screen::show(ui, ip, self.screen_texture.clone()),
+                    "Settings" => self.settings.show(ui, ip),
+                    _ => Ok(()),
                 }
-            } else {
-                ui.label("Your Awtrix Clock seems to be offline");
-                ui.button("Reconnect").clicked().then(|| {
-                    self.config.check_status(true);
+                .unwrap_or_else(|e| {
+                    self.toasts.error(e.to_string());
                 });
             }
         });
