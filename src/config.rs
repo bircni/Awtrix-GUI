@@ -1,15 +1,13 @@
 use anyhow::Context;
 use core::str;
 use serde::{Deserialize, Serialize};
-use std::{env, fs, io::Write, time::Instant};
+use std::{env, fs, io::Write};
 
 const ENV: &str = ".awtrix.env";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub ip: String,
-    #[serde(skip, default = "Instant::now")]
-    pub last_ping: Instant,
     // true = On, false = Off
     pub last_state: bool,
 }
@@ -20,7 +18,6 @@ impl Config {
             Ok(config) => config,
             Err(_) => Self {
                 ip: String::new(),
-                last_ping: Instant::now(),
                 last_state: false,
             },
         }
