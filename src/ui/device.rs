@@ -1,5 +1,5 @@
 use anyhow::Context;
-use egui::{Button, DragValue, Label, ScrollArea, SidePanel, Ui};
+use egui::{Button, DragValue, ScrollArea, SidePanel, Ui};
 use reqwest::blocking::Client;
 use semver::Version;
 use serde_json::{from_str, Value};
@@ -12,7 +12,7 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             time: 0,
             update_available: false,
@@ -122,8 +122,14 @@ impl Device {
         stats: &Option<Stat>,
         enabled: bool,
     ) -> anyhow::Result<()> {
-        let mut ret = ui
-            .horizontal(|ui| {
+        if self.update_available {
+            ui.add(Button::new("Update now"))
+                .on_hover_text("Update device")
+                .clicked()
+                .then(|| Self::set_update(ip))
+                .unwrap_or(Ok(()))
+        } else {
+            ui.horizontal(|ui| {
                 let ret = ui
                     .add_enabled(enabled, Button::new("Update"))
                     .clicked()
@@ -134,24 +140,14 @@ impl Device {
                 ret
             })
             .inner
-            .unwrap_or(Ok(()));
-
-        if self.update_available {
-            ui.add(Label::new("An Update is available!"));
-            ret = ui
-                .add(Button::new("Update now"))
-                .on_hover_text("Update device")
-                .clicked()
-                .then(|| Self::set_update(ip))
-                .unwrap_or(Ok(()));
+            .unwrap_or(Ok(()))
         }
-        ret
     }
 
     fn check_update(&mut self, ip: &str) -> anyhow::Result<()> {
         let stats = status::get_stats(ip).context("Failed to get stats")?;
-        let current = Device::parse_to_version(&stats.version);
-        let latest = Device::parse_to_version(&Device::get_latest_tag().unwrap_or_default());
+        let current = Self::parse_to_version(&stats.version);
+        let latest = Self::parse_to_version(&Self::get_latest_tag().unwrap_or_default());
         if current < latest {
             self.update_available = true;
             Ok(())

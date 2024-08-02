@@ -33,10 +33,8 @@ fn threaded_screen(ip: String, texture: Arc<RwLock<TextureHandle>>) -> anyhow::R
     });
 
     // Wait for the result from the thread
-    match rx.recv() {
-        Ok(result) => result,
-        Err(_) => Err(anyhow::anyhow!("Failed to receive result from thread")),
-    }
+    rx.recv()
+        .unwrap_or_else(|_| Err(anyhow::anyhow!("Failed to receive result from thread")))
 }
 
 fn get_screen(ip: &str) -> anyhow::Result<ColorImage> {
