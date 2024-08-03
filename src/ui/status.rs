@@ -28,7 +28,8 @@ pub fn get_stats(ip: &str) -> anyhow::Result<Stat> {
 }
 
 fn get_string(stat: &Option<Stat>) -> String {
-    stat.as_ref().map_or_else(|| "Battery: N/A\nBattery Raw: N/A\nData Type: N/A\nLux: N/A\nLDR Raw: N/A\nRAM: N/A\nBrightness: N/A\nTemperature: N/A\nHumidity: N/A\nUptime: N/A\nWiFi Signal: N/A\nMessages: N/A\nVersion: N/A\nIndicator 1: N/A\nIndicator 2: N/A\nIndicator 3: N/A\nApp: N/A\nUID: N/A\nMatrix: N/A\nIP Address: N/A".to_string(), |stat| format!(
+    stat.as_ref().map_or_else(|| 
+        "Battery: N/A\nBattery Raw: N/A\nData Type: N/A\nLux: N/A\nLDR Raw: N/A\nRAM: N/A\nBrightness: N/A\nTemperature: N/A\nHumidity: N/A\nUptime: N/A\nWiFi Signal: N/A\nMessages: N/A\nVersion: N/A\nIndicator 1: N/A\nIndicator 2: N/A\nIndicator 3: N/A\nApp: N/A\nUID: N/A\nMatrix: N/A\nIP Address: N/A".to_owned(), |stat| format!(
         "Battery: {}%\nBattery Raw: {}\nData Type: {}\nLux: {}\nLDR Raw: {}\nRAM: {}%\nBrightness: {}\nTemperature: {}°C\nHumidity: {}%\nUptime: {}s\nWiFi Signal: {}%\nMessages: {}\nVersion: {}\nIndicator 1: {}\nIndicator 2: {}\nIndicator 3: {}\nApp: {}\nUID: {}\nMatrix: {}\nIP Address: {}",
         stat.bat, stat.bat_raw, stat.data_type, stat.lux, stat.ldr_raw,
         stat.ram, stat.bri, stat.temp, stat.hum, stat.uptime, stat.wifi_signal,

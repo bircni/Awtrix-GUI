@@ -175,7 +175,7 @@ impl Device {
             .context("")?
             .as_str()
             .context("")?
-            .to_string()
+            .to_owned()
             .replace('"', "");
 
         Ok(text)

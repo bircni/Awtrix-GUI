@@ -8,7 +8,7 @@ const SIZE: [usize; 2] = [320, 80];
 
 pub fn show(ui: &mut Ui, ip: &str, texture: Arc<RwLock<TextureHandle>>) -> anyhow::Result<()> {
     if ui.button("Refresh").clicked() {
-        return threaded_screen(ip.to_string(), texture);
+        return threaded_screen(ip.to_owned(), texture);
     }
 
     ui.image(&texture.read().clone());
