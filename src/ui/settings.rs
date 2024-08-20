@@ -82,7 +82,7 @@ impl Settings {
             .replace('}', "\n}"))
     }
 
-    pub fn set_settings(&mut self, ip: &str) -> anyhow::Result<()> {
+    pub fn set_settings(&self, ip: &str) -> anyhow::Result<()> {
         Client::new()
             .post(format!("http://{ip}/api/settings"))
             .body(self.code.clone())
