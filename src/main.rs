@@ -1,12 +1,3 @@
-#![warn(clippy::pedantic)]
-#![warn(clippy::perf)]
-#![warn(clippy::style)]
-#![deny(clippy::all)]
-#![warn(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
 use anyhow::Context;
 use egui::ViewportBuilder;
 

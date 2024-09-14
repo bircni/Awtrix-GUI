@@ -11,7 +11,7 @@ pub struct StatusBar {
 }
 
 impl StatusBar {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { show_about: false }
     }
 
@@ -50,7 +50,7 @@ impl StatusBar {
             .inner;
     }
 
-    fn about_window(&mut self, ui: &mut Ui) {
+    fn about_window(&mut self, ui: &Ui) {
         Window::new("About")
             .resizable(false)
             .collapsible(false)

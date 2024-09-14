@@ -39,11 +39,11 @@ enum Tab {
 }
 
 impl Tab {
-    fn as_str(&self) -> &str {
+    const fn as_str(&self) -> &str {
         match self {
-            Tab::Screen => "Screen",
-            Tab::Status => "Status",
-            Tab::Settings => "Settings",
+            Self::Screen => "Screen",
+            Self::Status => "Status",
+            Self::Settings => "Settings",
         }
     }
 }
@@ -83,6 +83,7 @@ impl App {
 
 /// Main application loop (called every frame)
 impl eframe::App for App {
+    #[allow(clippy::significant_drop_in_scrutinee)]
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         let mut current_tab = self.current_tab.write();
         CentralPanel::default().show(ctx, |ui| {

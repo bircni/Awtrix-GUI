@@ -8,7 +8,7 @@ const SIZE: [usize; 2] = [320, 80];
 
 pub fn show(ui: &mut Ui, ip: &str, texture: Arc<RwLock<TextureHandle>>) -> anyhow::Result<()> {
     if ui.button("Refresh").clicked() {
-        return threaded_screen(ip.to_string(), texture);
+        return threaded_screen(ip.to_owned(), texture);
     }
 
     ui.image(&texture.read().clone());
@@ -33,10 +33,8 @@ fn threaded_screen(ip: String, texture: Arc<RwLock<TextureHandle>>) -> anyhow::R
     });
 
     // Wait for the result from the thread
-    match rx.recv() {
-        Ok(result) => result,
-        Err(_) => Err(anyhow::anyhow!("Failed to receive result from thread")),
-    }
+    rx.recv()
+        .unwrap_or_else(|_| Err(anyhow::anyhow!("Failed to receive result from thread")))
 }
 
 fn get_screen(ip: &str) -> anyhow::Result<ColorImage> {

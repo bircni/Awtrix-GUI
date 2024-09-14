@@ -14,13 +14,10 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Self {
-        match Self::read() {
-            Ok(config) => config,
-            Err(_) => Self {
-                ip: String::new(),
-                last_state: false,
-            },
-        }
+        Self::read().unwrap_or_else(|_| Self {
+            ip: String::new(),
+            last_state: false,
+        })
     }
 
     fn read() -> anyhow::Result<Self> {

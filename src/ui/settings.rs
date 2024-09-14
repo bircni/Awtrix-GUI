@@ -11,7 +11,7 @@ pub struct Settings {
 impl Settings {
     pub fn new() -> Self {
         Self {
-            language: "json".to_string(),
+            language: "json".to_owned(),
             code: String::new(),
         }
     }
@@ -73,7 +73,7 @@ impl Settings {
 
     fn get_settings(ip: &str) -> anyhow::Result<String> {
         let response = get(format!("http://{ip}/api/settings"))
-            .map_err(|_| anyhow::anyhow!("Failed to get settings"))?;
+            .map_err(|_e| anyhow::anyhow!("Failed to get settings"))?;
 
         Ok(response
             .text()?
@@ -82,7 +82,7 @@ impl Settings {
             .replace('}', "\n}"))
     }
 
-    pub fn set_settings(&mut self, ip: &str) -> anyhow::Result<()> {
+    pub fn set_settings(&self, ip: &str) -> anyhow::Result<()> {
         Client::new()
             .post(format!("http://{ip}/api/settings"))
             .body(self.code.clone())
