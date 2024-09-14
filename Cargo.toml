@@ -25,12 +25,12 @@ short_description = "A GUI for the awtrix clock."
 
 [dependencies]
 # Error handling
-anyhow = "1.0.86"
+anyhow = "1.0.88"
 # Networking
 reqwest = { version = "0.12.7", features = ["blocking"] }
 # Parsing
-serde = { version = "1.0.208", features = ["derive"] }
-serde_json = "1.0.125"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
 semver = "1.0.23"
 # GUI
 eframe = "0.28.1"
