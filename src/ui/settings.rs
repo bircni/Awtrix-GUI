@@ -52,8 +52,13 @@ impl Settings {
         });
         let theme = syntax_highlighting::CodeTheme::from_style(ui.style());
         let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
-            let mut layout_job =
-                syntax_highlighting::highlight(ui.ctx(), &theme, string, &self.language);
+            let mut layout_job = syntax_highlighting::highlight(
+                ui.ctx(),
+                ui.style(),
+                &theme,
+                string,
+                &self.language,
+            );
             layout_job.wrap.max_width = wrap_width;
             ui.fonts(|f| f.layout_job(layout_job))
         };
