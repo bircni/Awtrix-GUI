@@ -19,7 +19,7 @@ impl Device {
         }
     }
 
-    pub fn show(&mut self, ui: &mut Ui, ip: &str, stats: &Option<Stat>) -> anyhow::Result<()> {
+    pub fn show(&mut self, ui: &mut Ui, ip: &str, stats: Option<&Stat>) -> anyhow::Result<()> {
         SidePanel::right("panel")
             .show_separator_line(true)
             .show_inside(ui, |ui| {
@@ -119,7 +119,7 @@ impl Device {
         &mut self,
         ui: &mut Ui,
         ip: &str,
-        stats: &Option<Stat>,
+        stats: Option<&Stat>,
         enabled: bool,
     ) -> anyhow::Result<()> {
         if self.update_available {
