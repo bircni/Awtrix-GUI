@@ -15,7 +15,7 @@ pub fn show(ui: &mut Ui, ip: &str, stat: &mut Option<Stat>) -> anyhow::Result<()
             Err(e) => anyhow::bail!(e),
         }
     }
-    ui.add(egui::Label::new(get_string(stat)));
+    ui.add(egui::Label::new(get_string(stat.as_ref())));
     Ok(())
 }
 
@@ -27,7 +27,7 @@ pub fn get_stats(ip: &str) -> anyhow::Result<Stat> {
     Ok(from_str(&response.text()?)?)
 }
 
-fn get_string(stat: &Option<Stat>) -> String {
+fn get_string(stat: Option<&Stat>) -> String {
     stat.as_ref().map_or_else(||
         "Battery: N/A\nBattery Raw: N/A\nData Type: N/A\nLux: N/A\nLDR Raw: N/A\nRAM: N/A\nBrightness: N/A\nTemperature: N/A\nHumidity: N/A\nUptime: N/A\nWiFi Signal: N/A\nMessages: N/A\nVersion: N/A\nIndicator 1: N/A\nIndicator 2: N/A\nIndicator 3: N/A\nApp: N/A\nUID: N/A\nMatrix: N/A\nIP Address: N/A".to_owned(), |stat| format!(
         "Battery: {}%\nBattery Raw: {}\nData Type: {}\nLux: {}\nLDR Raw: {}\nRAM: {}%\nBrightness: {}\nTemperature: {}°C\nHumidity: {}%\nUptime: {}s\nWiFi Signal: {}%\nMessages: {}\nVersion: {}\nIndicator 1: {}\nIndicator 2: {}\nIndicator 3: {}\nApp: {}\nUID: {}\nMatrix: {}\nIP Address: {}",

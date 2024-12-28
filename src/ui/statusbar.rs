@@ -17,37 +17,36 @@ impl StatusBar {
 
     pub fn show(&mut self, ui: &mut Ui, tab: &mut Tab, config: &mut Config) -> anyhow::Result<()> {
         self.about_window(ui);
-        return ui
-            .horizontal(|ui| {
-                ui.add_enabled_ui(!config.ip.is_empty(), |ui| {
-                    ui.selectable_value(tab, Tab::Screen, "Screen");
-                    ui.selectable_value(tab, Tab::Status, "Status");
-                    ui.selectable_value(tab, Tab::Settings, "Settings");
-                });
+        ui.horizontal(|ui| {
+            ui.add_enabled_ui(!config.ip.is_empty(), |ui| {
+                ui.selectable_value(tab, Tab::Screen, "Screen");
+                ui.selectable_value(tab, Tab::Status, "Status");
+                ui.selectable_value(tab, Tab::Settings, "Settings");
+            });
 
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.add(Button::new(" ? ").rounding(40.0))
-                        .clicked()
-                        .then(|| self.show_about = true);
-                    let ret = ui
-                        .add(Button::new("Save"))
-                        .clicked()
-                        .then(|| match config.write() {
-                            Ok(()) => anyhow::Ok(()),
-                            Err(e) => anyhow::bail!(e),
-                        })
-                        .unwrap_or(Ok(()));
-                    ui.add(
-                        TextEdit::singleline(&mut config.ip)
-                            .hint_text("IP")
-                            .desired_width(150.0),
-                    );
-                    ui.label("IP:");
-                    ret
-                })
-                .inner
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.add(Button::new(" ? ").rounding(40.0))
+                    .clicked()
+                    .then(|| self.show_about = true);
+                let ret = ui
+                    .add(Button::new("Save"))
+                    .clicked()
+                    .then(|| match config.write() {
+                        Ok(()) => anyhow::Ok(()),
+                        Err(e) => anyhow::bail!(e),
+                    })
+                    .unwrap_or(Ok(()));
+                ui.add(
+                    TextEdit::singleline(&mut config.ip)
+                        .hint_text("IP")
+                        .desired_width(150.0),
+                );
+                ui.label("IP:");
+                ret
             })
-            .inner;
+            .inner
+        })
+        .inner
     }
 
     fn about_window(&mut self, ui: &Ui) {

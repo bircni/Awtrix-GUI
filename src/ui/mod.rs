@@ -98,7 +98,7 @@ impl eframe::App for App {
             });
 
             self.device
-                .show(ui, &self.config.ip, &self.stat)
+                .show(ui, &self.config.ip, self.stat.as_ref())
                 .unwrap_or_else(|e| {
                     self.toasts.error(e.to_string());
                 });
