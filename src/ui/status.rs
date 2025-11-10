@@ -1,7 +1,6 @@
-use std::fmt::Display;
+use std::fmt::{self, Display};
 
 use egui::{Button, Ui};
-use reqwest::blocking::get;
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
 
@@ -20,11 +19,14 @@ pub fn show(ui: &mut Ui, ip: &str, stat: &mut Option<Stat>) -> anyhow::Result<()
 }
 
 pub fn get_stats(ip: &str) -> anyhow::Result<Stat> {
-    let response = match get(format!("http://{ip}/api/stats")) {
+    let mut response = match ureq::get(format!("http://{ip}/api/stats")).call() {
         Ok(response) if response.status().is_success() => response,
         _ => anyhow::bail!("Failed to get stats"),
     };
-    Ok(from_str(&response.text()?)?)
+    let stats_str = response.body_mut().read_to_string()?;
+    let stats = from_str::<Stat>(&stats_str)?;
+
+    Ok(stats)
 }
 
 fn get_string(stat: Option<&Stat>) -> String {
@@ -38,7 +40,10 @@ fn get_string(stat: Option<&Stat>) -> String {
         ))
 }
 
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "This struct is used to deserialize the JSON response from the API."
+)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Stat {
     bat: u32,
@@ -65,7 +70,7 @@ pub struct Stat {
 }
 
 impl Display for Stat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Battery: {}%", self.bat)?;
         writeln!(f, "Battery Raw: {}", self.bat_raw)?;
         writeln!(f, "Data Type: {}", self.data_type)?;

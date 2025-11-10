@@ -1,7 +1,7 @@
 use crate::config::Config;
 use egui::{
-    include_image, special_emojis::GITHUB, vec2, Align, Align2, Button, Frame, Image, Layout,
-    TextEdit, Ui, Window,
+    Align, Align2, Button, Frame, Image, Layout, TextEdit, Ui, Window, include_image,
+    special_emojis::GITHUB, vec2,
 };
 
 use super::Tab;
@@ -19,23 +19,23 @@ impl StatusBar {
         self.about_window(ui);
         ui.horizontal(|ui| {
             ui.add_enabled_ui(!config.ip.is_empty(), |ui| {
-                ui.selectable_value(tab, Tab::Screen, "Screen");
+                // ui.selectable_value(tab, Tab::Screen, "Screen");
                 ui.selectable_value(tab, Tab::Status, "Status");
                 ui.selectable_value(tab, Tab::Settings, "Settings");
             });
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                ui.add(Button::new(" ? ").rounding(40.0))
+                ui.add(Button::new(" ? ").corner_radius(40.0))
                     .clicked()
                     .then(|| self.show_about = true);
-                let ret = ui
-                    .add(Button::new("Save"))
-                    .clicked()
-                    .then(|| match config.write() {
+                let ret = if ui.add(Button::new("Save")).clicked() {
+                    match config.write() {
                         Ok(()) => anyhow::Ok(()),
                         Err(e) => anyhow::bail!(e),
-                    })
-                    .unwrap_or(Ok(()));
+                    }
+                } else {
+                    Ok(())
+                };
                 ui.add(
                     TextEdit::singleline(&mut config.ip)
                         .hint_text("IP")
@@ -50,6 +50,11 @@ impl StatusBar {
     }
 
     fn about_window(&mut self, ui: &Ui) {
+        let version = if cfg!(test) {
+            "test version"
+        } else {
+            env!("CARGO_PKG_VERSION")
+        };
         Window::new("About")
             .resizable(false)
             .collapsible(false)
@@ -62,10 +67,10 @@ impl StatusBar {
                     ui.add(
                         Image::new(include_image!("../../res/icon.png"))
                             .shrink_to_fit()
-                            .rounding(10.0),
+                            .corner_radius(10.0),
                     );
 
-                    ui.label(format!("{}: {}", "Version", env!("CARGO_PKG_VERSION")));
+                    ui.label(format!("Version: {version}"));
                     ui.hyperlink_to(
                         format!("{GITHUB} {}", "Github"),
                         "https://github.com/bircni/awtrix-GUI",
