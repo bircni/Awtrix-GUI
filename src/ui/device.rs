@@ -1,55 +1,149 @@
-use anyhow::Context;
-use egui::{Button, DragValue, ScrollArea, SidePanel, Ui};
-use reqwest::blocking::Client;
-use semver::Version;
-use serde_json::{from_str, Value};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread, time,
+};
 
-use super::status::{self, Stat};
+use anyhow::Context;
+use egui::{
+    Color32, ColorImage, DragValue, ImageData, ScrollArea, SidePanel, TextureHandle,
+    TextureOptions, Ui,
+};
+use image::imageops;
+use parking_lot::{RawRwLock, RwLock, lock_api};
+
+const SCREEN_SIZE: [usize; 2] = [320, 80];
 
 pub struct Device {
     time: i32,
-    update_available: bool,
+    screen_texture: Arc<RwLock<egui::TextureHandle>>,
+    update_screen: bool,
+    auto_refresh_handle: Option<(thread::JoinHandle<()>, Arc<AtomicBool>)>,
 }
 
 impl Device {
-    pub const fn new() -> Self {
+    pub fn new(ctx: &egui::Context) -> Self {
+        let screen_texture = ctx.load_texture(
+            "screen",
+            ImageData::Color(Arc::new(ColorImage::filled(
+                SCREEN_SIZE,
+                Color32::TRANSPARENT,
+            ))),
+            TextureOptions::default(),
+        );
+        let screen_texture = Arc::new(RwLock::new(screen_texture));
         Self {
             time: 0,
-            update_available: false,
+            screen_texture,
+            update_screen: true,
+            auto_refresh_handle: None,
         }
     }
 
-    pub fn show(&mut self, ui: &mut Ui, ip: &str, stats: Option<&Stat>) -> anyhow::Result<()> {
+    pub fn show(&mut self, ui: &mut Ui, ip: &str) {
         SidePanel::right("panel")
             .show_separator_line(true)
+            .min_width(340.0)
             .show_inside(ui, |ui| {
-                ScrollArea::new([false, true])
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.heading("Awtrix Options");
+                ScrollArea::new([false, true]).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.heading("Awtrix Options");
+                    });
+                    ui.separator();
+                    if ip.is_empty() {
+                        ui.label("No IP set");
+                    } else {
+                        ui.vertical_centered(|ui| {
+                            ui.horizontal(|ui| {
+                                // TODO: FIX THIS
+                                Self::power(ui, ip);
+                                // TODO: FIX THIS
+                                Self::reboot(ui, ip);
+                                ui.separator();
+                                self.sleep(ui, ip)
+                            });
                         });
                         ui.separator();
-                        if ip.is_empty() {
-                            ui.label("No IP set");
-                            Ok(())
-                        } else {
-                            ui.vertical_centered(|ui| {
-                                ui.horizontal(|ui| {
-                                    // TODO: FIX THIS
-                                    Self::power(ui, ip);
-                                    // TODO: FIX THIS
-                                    Self::reboot(ui, ip);
-                                    ui.separator();
-                                    self.sleep(ui, ip)
-                                });
-                            });
-                            self.update_device(ui, ip, stats, self.update_available)
+                        self.show_screen(ui, ip);
+                    }
+                })
+            });
+    }
+
+    pub fn show_screen(&mut self, ui: &mut Ui, ip: &str) {
+        ui.toggle_value(&mut self.update_screen, "Auto refresh");
+
+        if self.update_screen {
+            self.start_auto_refresh(ip.to_owned());
+        }
+
+        ui.image(&self.screen_texture.read().clone());
+    }
+
+    fn start_auto_refresh(&mut self, ip: String) {
+        if self.auto_refresh_handle.is_none() {
+            println!("Starting auto refresh thread");
+            let texture =
+                Arc::<lock_api::RwLock<RawRwLock, TextureHandle>>::clone(&self.screen_texture);
+            let running = Arc::new(AtomicBool::new(true));
+            let running_clone = Arc::<AtomicBool>::clone(&running);
+            // let cycle = Arc::<RwLock<u64>>::clone(&self.auto_refresh_cycle);
+
+            let handle = thread::spawn(move || {
+                while running_clone.load(Ordering::Relaxed) {
+                    match Self::get_screen(&ip) {
+                        Ok(image) => {
+                            texture.write().set(image, TextureOptions::default());
                         }
-                    })
-                    .inner
+                        Err(e) => {
+                            eprintln!("Error fetching screen: {e}");
+                        }
+                    }
+                    thread::sleep(time::Duration::from_secs(2));
+                }
+            });
+
+            self.auto_refresh_handle = Some((handle, running));
+        }
+    }
+
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "The image size is fixed and known to be safe"
+    )]
+    fn get_screen(ip: &str) -> anyhow::Result<ColorImage> {
+        let mut response: ureq::http::Response<ureq::Body> =
+            match ureq::get(format!("http://{ip}/api/screen")).call() {
+                Ok(response) if response.status().is_success() => response,
+                _ => anyhow::bail!("Failed to get screen"),
+            };
+        let pixels = response
+            .body_mut()
+            .read_to_string()?
+            .trim_matches(|c| c == '[' || c == ']')
+            .split(',')
+            .filter_map(|s| s.parse().ok())
+            .collect::<Vec<u32>>()
+            .into_iter()
+            .flat_map(|x: u32| {
+                [
+                    ((x >> 16) & 0xFF) as u8,
+                    ((x >> 8) & 0xFF) as u8,
+                    (x & 0xFF) as u8,
+                ]
             })
-            .inner
-        //Ok(())
+            .collect::<Vec<u8>>();
+        Ok(ColorImage::from_rgb(
+            SCREEN_SIZE,
+            &imageops::resize(
+                &image::RgbImage::from_vec(32, 8, pixels).context("Failed to create image")?,
+                SCREEN_SIZE[0] as u32,
+                SCREEN_SIZE[1] as u32,
+                imageops::FilterType::Nearest,
+            ),
+        ))
     }
 
     fn power(ui: &mut Ui, ip: &str) {
@@ -63,10 +157,8 @@ impl Device {
 
     fn set_power(ip: &str, curr_power: bool) -> anyhow::Result<()> {
         let payload = format!("{{\"power\": {curr_power}}}");
-        Client::new()
-            .post(format!("http://{ip}/api/power"))
-            .body(payload)
-            .send()
+        ureq::post(format!("http://{ip}/api/power"))
+            .send(&payload)
             .context("Failed to send")?
             .status()
             .is_success()
@@ -90,10 +182,9 @@ impl Device {
 
     fn set_sleep(&self, ip: &str) -> anyhow::Result<()> {
         let payload = format!("{{\"sleep\": {}}}", self.time);
-        Client::new()
-            .post(format!("http://{ip}/api/sleep"))
-            .body(payload)
-            .send()?
+        ureq::post(format!("http://{ip}/api/sleep"))
+            .send(&payload)
+            .context("Failed to send")?
             .status()
             .is_success()
             .then_some(())
@@ -105,101 +196,12 @@ impl Device {
     }
 
     fn set_reboot(ip: &str) -> anyhow::Result<()> {
-        Client::new()
-            .post(format!("http://{ip}/api/reboot"))
-            .body("-")
-            .send()?
-            .status()
-            .is_success()
-            .then_some(())
-            .context("Failed to reboot")
-    }
-
-    fn update_device(
-        &mut self,
-        ui: &mut Ui,
-        ip: &str,
-        stats: Option<&Stat>,
-        enabled: bool,
-    ) -> anyhow::Result<()> {
-        if self.update_available {
-            ui.add(Button::new("Update now"))
-                .on_hover_text("Update device")
-                .clicked()
-                .then(|| Self::set_update(ip))
-                .unwrap_or(Ok(()))
-        } else {
-            ui.horizontal(|ui| {
-                let ret = ui
-                    .add_enabled(enabled, Button::new("Update"))
-                    .clicked()
-                    .then(|| self.check_update(ip));
-                if let Some(stats) = stats {
-                    ui.label(format!("Version: {}", stats.version));
-                }
-                ret
-            })
-            .inner
-            .unwrap_or(Ok(()))
-        }
-    }
-
-    fn check_update(&mut self, ip: &str) -> anyhow::Result<()> {
-        let stats = status::get_stats(ip).context("Failed to get stats")?;
-        let current = Self::parse_to_version(&stats.version);
-        let latest = Self::parse_to_version(&Self::get_latest_tag().unwrap_or_default());
-        if current < latest {
-            self.update_available = true;
-            Ok(())
-        } else {
-            self.update_available = false;
-            anyhow::bail!("No update available")
-        }
-    }
-
-    pub fn get_latest_tag() -> anyhow::Result<String> {
-        let url = "https://api.github.com/repos/Blueforcer/awtrix3/releases/latest";
-
-        let response = match Client::new()
-            .get(url)
-            .header("User-Agent", "reqwest")
-            .send()
-        {
-            Ok(response) if response.status().is_success() => response,
-            _ => anyhow::bail!("Could not get latest tag"),
-        };
-        let text = response.text().context("Could not get response")?;
-        let json = from_str::<Value>(&text).context("Could not read latest tag")?;
-        let text = json
-            .get("tag_name")
-            .context("")?
-            .as_str()
-            .context("")?
-            .to_owned()
-            .replace('"', "");
-
-        Ok(text)
-    }
-
-    fn parse_to_version(version: &str) -> Version {
-        let parts: Vec<u64> = version.split('.').map(|x| x.parse().unwrap_or(0)).collect();
-        match parts[..] {
-            [a, b, c] => Version::new(a, b, c),
-            [a, b] => Version::new(a, b, 0),
-            [a] => Version::new(a, 0, 0),
-            _ => Version::new(0, 0, 0),
-        }
-    }
-
-    fn set_update(ip: &str) -> anyhow::Result<()> {
-        Client::new()
-            .post(format!("http://{ip}/api/doupdate"))
-            .body(String::new())
-            .send()
+        ureq::post(format!("http://{ip}/api/reboot"))
+            .send("-")
             .context("Failed to send")?
             .status()
             .is_success()
             .then_some(())
-            .context("Failed to update")
+            .context("Failed to reboot")
     }
 }

@@ -1,24 +1,19 @@
 use anyhow::Context;
 use egui::{Align, Button, Layout, ScrollArea, TextEdit, TextStyle, Ui};
-use egui_extras::syntax_highlighting;
-use reqwest::blocking::{get, Client};
 
 pub struct Settings {
-    language: String,
     code: String,
 }
 
 impl Settings {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            language: "json".to_owned(),
             code: String::new(),
         }
     }
 
-    // TODO: Remove this lint suppression
-    #[allow(clippy::unnecessary_wraps)]
-    pub fn show(&mut self, ui: &mut Ui, ip: &str) -> anyhow::Result<()> {
+    // #[expect(clippy::unnecessary_wraps, reason = "TODO")]
+    pub fn show(&mut self, ui: &mut Ui, ip: &str) {
         ui.horizontal(|ui| {
             if ui.add(Button::new("Get Settings")).clicked() {
                 match Self::get_settings(ip) {
@@ -40,7 +35,7 @@ impl Settings {
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.spacing();
-                if ui.add(Button::new(" i ").rounding(40.0)).clicked()
+                if ui.add(Button::new(" i ").corner_radius(40.0)).clicked()
                     && open::that("https://blueforcer.github.io/awtrix3/#/api?id=change-settings")
                         .is_err()
                 {
@@ -50,18 +45,7 @@ impl Settings {
             });
             Ok(())
         });
-        let theme = syntax_highlighting::CodeTheme::from_style(ui.style());
-        let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
-            let mut layout_job = syntax_highlighting::highlight(
-                ui.ctx(),
-                ui.style(),
-                &theme,
-                string,
-                &self.language,
-            );
-            layout_job.wrap.max_width = wrap_width;
-            ui.fonts(|f| f.layout_job(layout_job))
-        };
+
         ScrollArea::vertical().show(ui, |ui| {
             ui.add(
                 TextEdit::multiline(&mut self.code)
@@ -69,29 +53,28 @@ impl Settings {
                     .code_editor()
                     .desired_rows(20)
                     .lock_focus(true)
-                    .desired_width(f32::MAX)
-                    .layouter(&mut layouter),
+                    .desired_width(f32::MAX), // .layouter(&mut layouter),
             );
         });
-        Ok(())
     }
 
     fn get_settings(ip: &str) -> anyhow::Result<String> {
-        let response = get(format!("http://{ip}/api/settings"))
+        let mut response = ureq::get(format!("http://{ip}/api/settings"))
+            .call()
             .map_err(|_e| anyhow::anyhow!("Failed to get settings"))?;
-
-        Ok(response
-            .text()?
+        let settings = response
+            .body_mut()
+            .read_to_string()?
             .replace(',', ",\n")
             .replace('{', "{\n")
-            .replace('}', "\n}"))
+            .replace('}', "\n}");
+
+        Ok(settings)
     }
 
     pub fn set_settings(&self, ip: &str) -> anyhow::Result<()> {
-        Client::new()
-            .post(format!("http://{ip}/api/settings"))
-            .body(self.code.clone())
-            .send()?
+        ureq::post(format!("http://{ip}/api/settings"))
+            .send(&self.code)?
             .status()
             .is_success()
             .then_some(())
